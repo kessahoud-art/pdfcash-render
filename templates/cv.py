@@ -1,18 +1,16 @@
 """
 Template CV Pro — PDF Cash IA
+CORRIGE : zero rect().fill() — compatibilite Android
 """
 import io
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from .utils import (
-    W, H, ML, MR, TW, DARK, GRAY, LGRAY, BORDER, GREEN,
+    W, H, ML, MR, TW, BOTTOM, DARK, GRAY, LGRAY, BORDER, GREEN,
     clean, hex_to_color, wrap_text, text_height,
     draw_footer, draw_brand_footer
 )
-
-BOTTOM = 50
-
 
 def generate_cv(content, color=None, author="Candidat"):
     ac_hex = (color.ac if color else None) or "#2C3E50"
@@ -26,19 +24,20 @@ def generate_cv(content, color=None, author="Candidat"):
 
     page_num = 1
     chapters = content.chapters or []
-    price = clean(content.price_suggested or "")
 
-    # ── PAGE 1 ──
     c.showPage()
     draw_footer(c, page_num, AC)
 
-    # Bande fine accent en haut
-    c.setFillColor(AC)
-    c.rect(0, H - 5, W, 5, stroke=0, fill=1)
+    # ── EN-TETE CV — zero fill, lignes uniquement ──
+    # Ligne epaisse en haut
+    c.setStrokeColor(AC)
+    c.setLineWidth(6)
+    c.line(0, H - 3, W, H - 3)
 
-    # En-tête CV
-    c.setFillColor(colors.HexColor("#F0F4FF"))
-    c.rect(0, H - 115, W, 110, stroke=0, fill=1)
+    # Ligne fine sous le nom
+    c.setStrokeColor(AC)
+    c.setLineWidth(1.5)
+    c.line(ML, H - 110, W - MR, H - 110)
 
     # Nom
     c.setFont("Helvetica-Bold", 26)
@@ -54,36 +53,46 @@ def generate_cv(content, color=None, author="Candidat"):
     # Contact
     c.setFont("Helvetica", 10)
     c.setFillColor(GRAY)
-    c.drawString(ML, H - 76, "Afrique francophone  |  WhatsApp disponible  |  professionnel@email.com")
+    c.drawString(ML, H - 76, "Afrique francophone  |  WhatsApp disponible  |  pro@email.com")
 
-    # Ligne accent
+    # Ligne accent sous contact
     c.setStrokeColor(AC)
     c.setLineWidth(2)
-    c.line(ML, H - 105, W - MR, H - 105)
+    c.line(ML, H - 95, W - MR, H - 95)
 
-    y = H - 125
+    y = H - 120
 
-    def skill_bar(name, level, yy):
-        bar_w = 100
+    def skill_bar_line(name, level, yy):
+        """Barre de competence en lignes — zero fill."""
+        # Nom
         c.setFont("Helvetica", 9)
         c.setFillColor(DARK)
         c.drawString(ML, yy, clean(name))
-        # Fond
-        c.setFillColor(BORDER)
-        c.rect(ML + 130, yy - 1, bar_w, 8, stroke=0, fill=1)
-        # Rempli
-        c.setFillColor(AC)
-        c.rect(ML + 130, yy - 1, bar_w * level / 100, 8, stroke=0, fill=1)
+
+        # Barre fond — stroke uniquement
+        bar_w = 100
+        c.setStrokeColor(BORDER)
+        c.setLineWidth(6)
+        c.line(ML + 130, yy + 4, ML + 130 + bar_w, yy + 4)
+
+        # Barre remplie — ligne coloree epaisse
+        filled = bar_w * level / 100
+        c.setStrokeColor(AC)
+        c.setLineWidth(6)
+        c.line(ML + 130, yy + 4, ML + 130 + filled, yy + 4)
+
         return yy - 20
 
     def sec_title(label, yy):
         yy -= 8
+        # Label en gras colore
         c.setFont("Helvetica-Bold", 9)
-        c.setFillColor(LGRAY)
+        c.setFillColor(AC)
         c.drawString(ML, yy, label.upper())
         yy -= 14
+        # Ligne accent
         c.setStrokeColor(AC)
-        c.setLineWidth(2)
+        c.setLineWidth(1.5)
         c.line(ML, yy, W - MR, yy)
         yy -= 10
         return yy
@@ -123,7 +132,7 @@ def generate_cv(content, color=None, author="Candidat"):
         yy -= 8
         return yy
 
-    # Résumé
+    # Resume
     y = sec_title("Resume Professionnel", y)
     desc = clean(content.description or (chapters[0].content[:400] if chapters else ""))
     if desc:
@@ -131,7 +140,7 @@ def generate_cv(content, color=None, author="Candidat"):
         wrap_text(c, desc, ML, y, TW, "Helvetica", 10, DARK, 2)
         y -= dh + 10
 
-    # Expériences
+    # Experiences
     y = sec_title("Experiences Professionnelles", y)
     for i, ch in enumerate(chapters[:4]):
         parts = clean(ch.title or "").split("-")
@@ -168,7 +177,7 @@ def generate_cv(content, color=None, author="Candidat"):
     c.drawString(ML, y, "Lycee Excellence")
     y -= 22
 
-    # Compétences
+    # Competences — barres en lignes
     y = sec_title("Competences", y)
     skills = (content.key_takeaways or [])[:6]
     saved_y = y
@@ -176,7 +185,7 @@ def generate_cv(content, color=None, author="Candidat"):
     right = skills[3:]
 
     for i, sk in enumerate(left):
-        y = skill_bar(clean(sk)[:28], 95 - i * 10, y)
+        y = skill_bar_line(clean(sk)[:28], 95 - i * 10, y)
 
     ry = saved_y
     for i, sk in enumerate(right):
@@ -185,10 +194,15 @@ def generate_cv(content, color=None, author="Candidat"):
         c.setFillColor(DARK)
         c.drawString(rx, ry, clean(sk)[:28])
         bar_w = 80
-        c.setFillColor(BORDER)
-        c.rect(rx + 130, ry - 1, bar_w, 8, stroke=0, fill=1)
-        c.setFillColor(AC)
-        c.rect(rx + 130, ry - 1, bar_w * (90 - i * 10) / 100, 8, stroke=0, fill=1)
+        # Barre fond
+        c.setStrokeColor(BORDER)
+        c.setLineWidth(6)
+        c.line(rx + 130, ry + 4, rx + 130 + bar_w, ry + 4)
+        # Barre remplie
+        filled = bar_w * (90 - i * 10) / 100
+        c.setStrokeColor(AC)
+        c.setLineWidth(6)
+        c.line(rx + 130, ry + 4, rx + 130 + filled, ry + 4)
         ry -= 20
 
     y = min(y, ry)
@@ -196,7 +210,7 @@ def generate_cv(content, color=None, author="Candidat"):
     # Langues
     y = sec_title("Langues", y)
     for lang, lvl in [("Francais", 100), ("Anglais", 65), ("Langue locale", 100)]:
-        y = skill_bar(lang, lvl, y)
+        y = skill_bar_line(lang, lvl, y)
 
     # Pied de page CV
     if y > BOTTOM + 25:
