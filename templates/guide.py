@@ -1,19 +1,17 @@
 """
 Template Guide Pratique — PDF Cash IA
+CORRIGE : zero rect/circle fill — compatibilite Android
 """
 import io
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from .utils import (
-    W, H, ML, MR, TW, DARK, GRAY, LGRAY, BORDER, GREEN, ORANGE, RED,
+    W, H, ML, MR, TW, BOTTOM, DARK, GRAY, LGRAY, BORDER, GREEN, ORANGE, RED,
     clean, hex_to_color, wrap_text, text_height,
     draw_header, draw_footer, tip_box, error_box, action_box, bullet_item,
     draw_cta_box, draw_brand_footer, cover_base
 )
-
-BOTTOM = 50
-
 
 def generate_guide(content, color=None, author="Coach Business Afrique"):
     ac_hex = (color.ac if color else None) or "#059669"
@@ -55,20 +53,29 @@ def generate_guide(content, color=None, author="Coach Business Afrique"):
     c.line(ML, y, ML + 30, y)
     y -= 16
 
-    # Étapes avec cercles et flèches
+    # Etapes avec numeros colores — ZERO circle fill
     for i, ch in enumerate(chapters[:6]):
         is_last = i == min(len(chapters), 6) - 1
-        c.setFillColor(AC)
-        c.circle(ML + 13, y - 13, 13, stroke=0, fill=1)
+
+        # Cercle stroke uniquement
+        c.setStrokeColor(AC)
+        c.setLineWidth(2)
+        c.circle(ML + 13, y - 13, 13, stroke=1, fill=0)
+
+        # Numero colore a l'interieur
         c.setFont("Helvetica-Bold", 10)
-        c.setFillColor(colors.white)
-        c.drawCentredString(ML + 13, y - 17, str(i+1))
+        c.setFillColor(AC)
+        c.drawCentredString(ML + 13, y - 17, str(i + 1))
+
+        # Titre etape
         c.setFont("Helvetica-Bold", 11)
         c.setFillColor(DARK)
         c.drawString(ML + 34, y - 10, clean(ch.title or f"Etape {i+1}"))
+
+        # Tiret pointille vers suivant
         if not is_last:
             c.setStrokeColor(AC)
-            c.setLineWidth(1.5)
+            c.setLineWidth(1)
             c.setDash(3, 2)
             c.line(ML + 13, y - 26, ML + 13, y - 36)
             c.setDash()
@@ -83,39 +90,53 @@ def generate_guide(content, color=None, author="Coach Business Afrique"):
 
     promesse = clean(content.tagline or content.subtitle or
                      "Applique ce guide et obtiens des resultats en moins de 7 jours.")
-    ph = text_height(c, promesse, TW - 28, "Helvetica-Bold", 11) + 44
+    tmp = canvas.Canvas(io.BytesIO(), pagesize=A4)
+    ph = text_height(tmp, promesse, TW - 28, "Helvetica-Bold", 11) + 44
+
+    # Encadre promesse stroke uniquement
     c.setStrokeColor(AC)
     c.setLineWidth(1.5)
     c.rect(ML, y - ph, TW, ph, stroke=1, fill=0)
     c.setLineWidth(3)
     c.line(ML, y - ph, ML, y)
-    c.setFillColor(AC)
-    c.rect(ML, y - 20, 80, 20, stroke=0, fill=1)
+    c.setLineWidth(4)
+    c.line(ML, y, ML + TW, y)
+
+    # Label PROMESSE texte colore
     c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(colors.white)
-    c.drawString(ML + 4, y - 13, "PROMESSE")
+    c.setFillColor(AC)
+    c.drawString(ML + 8, y - 13, "PROMESSE")
+
     wrap_text(c, promesse, ML + 10, y - 28, TW - 20, "Helvetica-Bold", 11, DARK)
     y -= ph + 14
 
-    # ÉTAPES
+    # ETAPES — 1 par page
     for i, ch in enumerate(chapters[:6]):
         etape_title = clean(ch.title or f"Etape {i+1}")
         y = new_page(f"ETAPE {str(i+1).zfill(2)}")
 
-        # Grand badge numéro
-        c.setFillColor(AC)
-        c.rect(ML, y - 60, 60, 60, stroke=0, fill=1)
+        # Badge etape — ZERO rect fill
+        # Numero en gras colore avec lignes decoratives
         c.setFont("Helvetica-Bold", 8)
-        c.setFillColor(colors.white)
-        c.drawCentredString(ML + 30, y - 12, "ETAPE")
-        c.setFont("Helvetica-Bold", 24)
-        c.drawCentredString(ML + 30, y - 38, str(i+1).zfill(2))
+        c.setFillColor(LGRAY)
+        c.drawString(ML, y, "ETAPE")
+        y -= 12
 
-        # Titre
-        c.setFont("Helvetica-Bold", 16)
+        # Grand numero colore
+        c.setFont("Helvetica-Bold", 32)
+        c.setFillColor(AC)
+        c.drawString(ML, y - 26, str(i + 1).zfill(2))
+
+        # Ligne verticale accent a gauche
+        c.setStrokeColor(AC)
+        c.setLineWidth(3)
+        c.line(ML + 46, y + 2, ML + 46, y - 36)
+
+        # Titre a droite du numero
+        c.setFont("Helvetica-Bold", 15)
         c.setFillColor(DARK)
-        wrap_text(c, etape_title, ML + 70, y - 18, TW - 70, "Helvetica-Bold", 16, DARK)
-        y -= 68
+        wrap_text(c, etape_title, ML + 56, y - 6, TW - 56, "Helvetica-Bold", 15, DARK)
+        y -= 50
 
         # Ligne accent
         c.setStrokeColor(AC)
@@ -123,7 +144,7 @@ def generate_guide(content, color=None, author="Coach Business Afrique"):
         c.line(ML, y, W - MR, y)
         y -= 14
 
-        # Résultat attendu
+        # Resultat attendu
         c.setFont("Helvetica-Oblique", 9)
         c.setFillColor(LGRAY)
         c.drawString(ML, y, "Resultat attendu : appliquer en moins de 24 heures")
@@ -134,11 +155,10 @@ def generate_guide(content, color=None, author="Coach Business Afrique"):
         paras = [p.strip() for p in content_text.split('\n') if p.strip() and len(p.strip()) > 5]
         total = len(paras)
 
-        intro = paras[:max(1, total//4)]
-        corps = paras[max(1, total//4):max(2, total*3//4)]
-        fin   = paras[max(2, total*3//4):]
+        intro = paras[:max(1, total // 4)]
+        corps = paras[max(1, total // 4):max(2, total * 3 // 4)]
+        fin   = paras[max(2, total * 3 // 4):]
 
-        # Intro
         for para in intro:
             ph = text_height(c, para, TW, "Helvetica", 10, 3)
             if y - ph < BOTTOM + 8:
@@ -146,15 +166,13 @@ def generate_guide(content, color=None, author="Coach Business Afrique"):
             wrap_text(c, para, ML, y, TW, "Helvetica", 10, DARK, 3)
             y -= ph + 10
 
-        # Corps — bullets
         for para in corps:
             bh = text_height(c, para, TW - 16, "Helvetica", 10)
             if y - bh - 8 < BOTTOM + 8:
                 y = new_page(f"ETAPE {str(i+1).zfill(2)}")
             y = bullet_item(c, para, y, AC)
 
-        # Encadrés fin
-        erreur = fin[0] if fin else ""
+        erreur  = fin[0] if fin else ""
         conseil = fin[1] if len(fin) > 1 else ""
         action  = fin[2] if len(fin) > 2 else "Applique cette etape maintenant et passe a la suivante."
 
@@ -189,6 +207,7 @@ def generate_guide(content, color=None, author="Coach Business Afrique"):
     y -= 18
 
     for i, ch in enumerate(chapters[:6]):
+        # Checkbox stroke uniquement
         c.setStrokeColor(AC)
         c.setLineWidth(1.5)
         c.rect(ML, y - 16, 16, 16, stroke=1, fill=0)
@@ -200,7 +219,7 @@ def generate_guide(content, color=None, author="Coach Business Afrique"):
         c.line(ML + 24, y - 18, W - MR, y - 18)
         y -= 26
 
-    # Points clés
+    # Points cles
     y -= 14
     c.setStrokeColor(BORDER)
     c.setLineWidth(0.5)
